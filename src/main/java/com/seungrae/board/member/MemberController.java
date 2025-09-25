@@ -45,6 +45,11 @@ public class MemberController {
             System.out.println(error);
             return "register.html";
         }
+        if(memberRepository.existsByEmail(req.email())){
+            model.addAttribute("error", "이미 사용 중인 이메일입니다.");
+            return "register.html";
+        }
+
         String encodePw = passwordEncoder.encode(req.password());
 
         Member member = new Member();

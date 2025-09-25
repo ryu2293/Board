@@ -22,7 +22,7 @@ public class BoardColumn {
     private String title;
 
     @Column(nullable = false)
-    private Integer ColumnOrder;
+    private Integer columnOrder;
     // FK(Board_id)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")

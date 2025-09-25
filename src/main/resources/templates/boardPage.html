@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${board.title}">보드 페이지</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container-fluid mt-3">
+    <h1 th:text="${board.title}">보드 제목</h1>
+
+    <div class="row flex-nowrap overflow-auto">
+
+        <!--보드 칼럼(To do, In progress, Done ...)-->
+        <div th:each="col : ${board.columns}" class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title" th:text="${col.title}">칼럼 제목</h5>
+                    <!--카드 목록-->
+                    <div th:each="card : ${col.cards}" class="card my-2">
+                        <div class="card-body">
+                            <h6 class="card-title" th:text="${card.title}">카드 제목</h6>
+                            <p class="card-text" th:text="${card.description}">카드 설명</p>
+                            <!--수정 모달창-->
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editCardModal"
+                                    th:attr="data-card-id=${card.id},
+                                             data-card-title=${card.title},
+                                             data-card-description=${card.description}">
+                                    수정
+                            </button>
+                            <!--삭제 버튼-->
+                            <form th:action="@{/card/{id}/delete(id=${card.id})}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('정말로 삭제하시겠습니까?');">삭제</button>
+                            </form>
+                        </div>
+                    </div>
+                    <!--카드 입력 폼-->
+                    <form th:action="@{/column/{id}/cards(id=${col.id})}" method="post" class="mt-3">
+                        <div class="mb-2">
+                            <input type="text" name="title" class="form-control" placeholder="새 카드 제목" required>
+                        </div>
+                        <div class="mb-2">
+                            <textarea name="description" class="form-control" placeholder="상세 내용" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-sm">카드 추가</button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+        <!--모달-->
+        <div class="modal fade" id="editCardModal" tabindex="-1" aria-labelledby="editCardModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editCardModalLabel">카드 수정</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form id="editCardForm" method="post">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="editCardTitle" class="form-label">제목</label>
+                                <input type="text" class="form-control" id="editCardTitle" name="title" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="editCardDescription" class="form-label">상세 내용</label>
+                                <textarea class="form-control" id="editCardDescription" name="description" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                            <button type="submit" class="btn btn-primary">저장</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+<script>
+    // 'editCardModal'이라는 id를 가진 모달 요소를 찾음
+    const editCardModal = document.getElementById('editCardModal');
+
+    // 모달이 보여지기 직전에 발생하는 이벤트를 감지
+    editCardModal.addEventListener('show.bs.modal', event => {
+        // 모달을 트리거한 '수정' 버튼을 찾음
+        const button = event.relatedTarget;
+
+        // 버튼의 data-* 속성에서 카드 정보를 읽어옴
+        const cardId = button.getAttribute('data-card-id');
+        const cardTitle = button.getAttribute('data-card-title');
+        const cardDescription = button.getAttribute('data-card-description');
+
+        // 모달 안의 입력 필드를 찾음
+        const modalTitleInput = editCardModal.querySelector('#editCardTitle');
+        const modalDescriptionTextarea = editCardModal.querySelector('#editCardDescription');
+        const modalForm = editCardModal.querySelector('#editCardForm');
+
+        // 입력 필드에 카드 정보 채우기
+        modalTitleInput.value = cardTitle;
+        modalDescriptionTextarea.value = cardDescription;
+
+        // form의 action URL을 동적으로 설정
+        modalForm.action = '/card/' + cardId + '/update';
+    });
+</script>
+
+<script th:if="${message}" th:inline="javascript">
+    alert([[${message}]]);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

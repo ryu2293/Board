@@ -42,4 +42,9 @@ public class BoardService {
     public List<Board> getMyBoard(Long memberId){
         return boardRepository.findByMembers_Id(memberId);
     }
+
+    @Transactional
+    public Board checkBoard(Long boardId, Long memberId){
+        return boardRepository.findByIdAndMembers_Id(boardId, memberId).orElseThrow(() -> new IllegalArgumentException("권한이 없습니다!"));
+    }
 }

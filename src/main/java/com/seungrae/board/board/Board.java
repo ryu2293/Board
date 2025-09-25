@@ -33,6 +33,6 @@ public class Board {
 
     // BoardColumn에 매핑
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("ColumnOrder ASC")
+    @OrderBy("columnOrder ASC")
     List<BoardColumn> columns = new ArrayList<>();
 }
