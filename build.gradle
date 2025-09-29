@@ -40,6 +40,9 @@ dependencies {
 
 	// valid 검증
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
+
+	// 웹소켓 라이브러리
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 }
 
 tasks.named('test') {

@@ -1,5 +1,6 @@
 package com.seungrae.board.card;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.seungrae.board.colum.BoardColumn;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -21,5 +22,6 @@ public class Card {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "boardColumn_id")
+    @JsonBackReference
     private BoardColumn boardColumn;
 }

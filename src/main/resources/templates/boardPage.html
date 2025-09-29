@@ -113,8 +113,13 @@
         </div>
     </div>
 </div>
-</div> <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+<!--SockJs stomp.js-->
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
 <script>
     // --- 카드 수정 모달 제어 ---
@@ -171,6 +176,57 @@
             }
         });
     });
+</script>
+
+<!--소켓 기능-->
+<script>
+    const boardId = [[${board.id}]];
+    let stompClient = null;
+
+    function connect(){
+        <!--엔드포인트로 연결-->
+        const socket = new SockJS('/ws-stomp');
+        stompClient = Stomp.over(socket);
+        <!--STOMP 연결 시작, 성공하면 onConnected 호출-->
+        stompClient.connect({}, onConnected, onError);
+    }
+
+    function onConnected(){
+        console.log('WebSocket이 연결되었습니다.');
+        <!--'/topic/board/{boardId}' 구독 시작, 해당 주소로 메세지 오면 onMessageReceived 실행-->
+        stompClient.subscribe('/topic/board/' + boardId, onMessageReceived);
+    }
+
+    function onError(error){
+        console.error('WebSocket 연결에 실패했습니다.');
+    }
+
+    function onMessageReceived(payload){
+        console.log('메시지 수신:', payload);
+        const message = JSON.parse(payload.body);
+        const data = message.payload;
+
+        switch(message.type){
+            case 'CARD_CREATED' :
+                alert(`새 카드 '${data.title}'가 추가되었습니다.`);
+                window.location.reload();
+                break;
+            case 'CARD_MOVED':
+                alert(`카드 '${data.cardTitle}'가 이동되었습니다.`);
+                window.location.reload();
+                break;
+            case 'CARD_DELETED':
+                alert(`카드 '${data.cardTitle}'가 삭제되었습니다.`);
+                window.location.reload();
+                break;
+            case 'CARD_UPDATED':
+                alert(`카드 '${data.title}'가 수정되었습니다.`);
+                window.location.reload();
+                break;
+        }
+    }
+
+    connect();
 </script>
 
 <script th:if="${msg}" th:inline="javascript">

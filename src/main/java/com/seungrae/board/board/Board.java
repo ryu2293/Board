@@ -1,5 +1,6 @@
 package com.seungrae.board.board;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.seungrae.board.colum.BoardColumn;
 import com.seungrae.board.member.Member;
 import jakarta.persistence.*;
@@ -29,10 +30,12 @@ public class Board {
             joinColumns = @JoinColumn(name = "board_id"),
             inverseJoinColumns = @JoinColumn(name = "member_id")
     )
+    @JsonManagedReference
     private Set<Member> members = new HashSet<>();
 
     // BoardColumn에 매핑
     @OneToMany(mappedBy = "board", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("columnOrder ASC")
+    @JsonManagedReference
     List<BoardColumn> columns = new ArrayList<>();
 }

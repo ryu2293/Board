@@ -1,5 +1,6 @@
 package com.seungrae.board.member;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.seungrae.board.board.Board;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,6 +24,7 @@ public class Member {
     private String password;
     private String role;
     @ManyToMany(mappedBy = "members")
+    @JsonBackReference
     private Set<Board> boards = new HashSet<>();
 
 }

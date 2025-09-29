@@ -54,6 +54,7 @@ public class CardController {
 
     @PreAuthorize("isAuthenticated()")
     @PutMapping("/cards/{cardId}/move")
+    @ResponseBody
     public ResponseEntity<String> moveCard(
             @PathVariable Long cardId,
             @Valid @RequestBody CardMoveDto req,
