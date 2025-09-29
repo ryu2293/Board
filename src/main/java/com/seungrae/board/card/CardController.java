@@ -1,11 +1,15 @@
 package com.seungrae.board.card;
 
+import com.seungrae.board.dto.CardMoveDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -45,6 +49,26 @@ public class CardController {
         }catch (Exception e){
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/board/list";
+        }
+    }
+
+    @PreAuthorize("isAuthenticated()")
+    @PutMapping("/cards/{cardId}/move")
+    public ResponseEntity<String> moveCard(
+            @PathVariable Long cardId,
+            @Valid @RequestBody CardMoveDto req,
+            BindingResult bindingResult
+    ){
+        try{
+            if(bindingResult.hasErrors()){
+                String error = bindingResult.getFieldError().getDefaultMessage();
+                return ResponseEntity.status(401).body(error);
+            }
+            cardService.cardMove(cardId, req.newColumnId(), req.newOrder());
+            return ResponseEntity.ok().body("카드 이동에 성공하였습니다.");
+        }
+        catch (Exception e){
+            return ResponseEntity.status(500).body(e.getMessage());
         }
     }
 }

@@ -2,6 +2,7 @@ package com.seungrae.board.board;
 
 import com.seungrae.board.colum.BoardColumn;
 import com.seungrae.board.colum.BoardColumnRP;
+import com.seungrae.board.member.Member;
 import com.seungrae.board.member.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -46,5 +47,16 @@ public class BoardService {
     @Transactional
     public Board checkBoard(Long boardId, Long memberId){
         return boardRepository.findByIdAndMembers_Id(boardId, memberId).orElseThrow(() -> new IllegalArgumentException("권한이 없습니다!"));
+    }
+
+    @Transactional
+    public void invite(Long boardId, String email){
+        Member member = memberRepository.findByEmail(email).orElseThrow(()->new IllegalArgumentException("존재하지 않는 이메일입니다."));
+        Board board = boardRepository.findById(boardId).orElseThrow(() -> new IllegalArgumentException("존재하지 않는 보드입니다."));
+        if(board.getMembers().contains(member)){
+            throw new IllegalArgumentException("이미 보드에 참여하는 멤버입니다.");
+        }
+        board.getMembers().add(member);
+        boardRepository.save(board);
     }
 }
