@@ -28,9 +28,10 @@
 
 <div class="my-3">
     <h5>📧 멤버 초대하기</h5>
+    <div id="inviteTypingIndicator"></div>
     <form th:action="@{/board/{id}/invite(id=${board.id})}" method="post" class="row row-cols-lg-auto g-3 align-items-center">
         <div class="col-12">
-            <input type="email" name="email" class="form-control" placeholder="초대할 멤버의 이메일" required>
+            <input id="inviteEmailInput" type="email" name="email" class="form-control" placeholder="초대할 멤버의 이메일" required>
         </div>
         <div class="col-12">
             <button type="submit" class="btn btn-primary">초대</button>
@@ -117,27 +118,48 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
-<!--SockJs stomp.js-->
+<!--sockJs-->
 <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
 
-<script>
+<script th:inline="javascript">
+
+    const boardId = [[${board.id}]];
+    const currentUsername = [[${#authentication.principal.username}]];
+    let stompClient = null;
+
+
     // --- 카드 수정 모달 제어 ---
     const editCardModal = document.getElementById('editCardModal');
     if (editCardModal) {
+        let editingCardId = null;
         editCardModal.addEventListener('show.bs.modal', event => {
             const button = event.relatedTarget;
             const cardId = button.getAttribute('data-card-id');
             const cardTitle = button.getAttribute('data-card-title');
             const cardDescription = button.getAttribute('data-card-description');
+            editingCardId = cardId;
 
+            // 소켓 연결이 확인
+            if (stompClient && stompClient.connected) {
+                stompClient.send(`/app/board/${boardId}/editing`, {}, JSON.stringify({
+                    cardId: editingCardId, username: currentUsername, isEditing: true
+                }));
+            }
             const modalTitleInput = editCardModal.querySelector('#editCardTitle');
             const modalDescriptionTextarea = editCardModal.querySelector('#editCardDescription');
             const modalForm = editCardModal.querySelector('#editCardForm');
-
             modalTitleInput.value = cardTitle;
             modalDescriptionTextarea.value = cardDescription;
             modalForm.action = '/card/' + cardId + '/update';
+        });
+        editCardModal.addEventListener('hidden.bs.modal', event => {
+            if (stompClient && stompClient.connected && editingCardId) {
+                stompClient.send(`/app/board/${boardId}/editing`, {}, JSON.stringify({
+                    cardId: editingCardId, username: currentUsername, isEditing: false
+                }));
+                editingCardId = null;
+            }
         });
     }
 
@@ -145,88 +167,111 @@
     const cardLists = document.querySelectorAll('.card-list');
     cardLists.forEach(list => {
         new Sortable(list, {
-            group: 'shared',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
+            group: 'shared', animation: 150, ghostClass: 'sortable-ghost',
             onEnd: function (evt) {
                 const cardId = evt.item.getAttribute('data-card-id');
                 const newColumnId = evt.to.getAttribute('data-column-id');
-                const newOrder = evt.newIndex; // 0-based index
-
-                // 서버에 변경사항을 알리는 API 호출
-                fetch(`/cards/${cardId}/move`, {
+                const newOrder = evt.newIndex;
+                fetch(`/api/cards/${cardId}/move`, { // (Controller의 주소와 일치해야 합니다)
                     method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        newColumnId: newColumnId,
-                        newOrder: newOrder
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ newColumnId: newColumnId, newOrder: newOrder })
                 }).then(async (response) => {
                     if (!response.ok) {
                         const errorText = await response.text();
                         alert(errorText);
                         window.location.reload();
                     }
-                }).catch(error => {
-                    console.error('Error:', error);
-                    alert(error.text());
-                });
+                }).catch(error => console.error('Error:', error));
             }
         });
     });
-</script>
 
-<!--소켓 기능-->
-<script>
-    const boardId = [[${board.id}]];
-    let stompClient = null;
-
-    function connect(){
-        <!--엔드포인트로 연결-->
-        const socket = new SockJS('/ws-stomp');
-        stompClient = Stomp.over(socket);
-        <!--STOMP 연결 시작, 성공하면 onConnected 호출-->
-        stompClient.connect({}, onConnected, onError);
-    }
-
-    function onConnected(){
-        console.log('WebSocket이 연결되었습니다.');
-        <!--'/topic/board/{boardId}' 구독 시작, 해당 주소로 메세지 오면 onMessageReceived 실행-->
-        stompClient.subscribe('/topic/board/' + boardId, onMessageReceived);
-    }
-
-    function onError(error){
-        console.error('WebSocket 연결에 실패했습니다.');
-    }
-
-    function onMessageReceived(payload){
-        console.log('메시지 수신:', payload);
-        const message = JSON.parse(payload.body);
-        const data = message.payload;
-
-        switch(message.type){
-            case 'CARD_CREATED' :
-                alert(`새 카드 '${data.title}'가 추가되었습니다.`);
-                window.location.reload();
-                break;
-            case 'CARD_MOVED':
-                alert(`카드 '${data.cardTitle}'가 이동되었습니다.`);
-                window.location.reload();
-                break;
-            case 'CARD_DELETED':
-                alert(`카드 '${data.cardTitle}'가 삭제되었습니다.`);
-                window.location.reload();
-                break;
-            case 'CARD_UPDATED':
-                alert(`카드 '${data.title}'가 수정되었습니다.`);
-                window.location.reload();
-                break;
+    // --- 멤버 초대 입력 감지 기능 ---
+    const inviteInput = document.getElementById('inviteEmailInput');
+    const inviteTypingIndicator = document.getElementById('inviteTypingIndicator');
+    if(inviteInput && inviteTypingIndicator) {
+        let typingTimer;
+        let isTyping = false;
+        const doneTypingInterval = 1000;
+        inviteInput.addEventListener('input', () => {
+            clearTimeout(typingTimer);
+            if (!isTyping) {
+                if (stompClient && stompClient.connected) {
+                    stompClient.send(`/app/board/${boardId}/invite`, {}, JSON.stringify({
+                        username: currentUsername, isTyping: true
+                    }));
+                }
+                isTyping = true;
+            }
+            typingTimer = setTimeout(doneTyping, doneTypingInterval);
+        });
+        function doneTyping() {
+            if (stompClient && stompClient.connected) {
+                stompClient.send(`/app/board/${boardId}/invite`, {}, JSON.stringify({
+                    username: currentUsername, isTyping: false
+                }));
+            }
+            isTyping = false;
         }
     }
 
+    // --- 3. 실시간 동기화 (WebSocket) 기능 정의 ---
+    function connect() {
+        const socket = new SockJS('/ws-stomp');
+        stompClient = Stomp.over(socket);
+        stompClient.connect({}, onConnected, onError);
+    }
+    function onConnected() {
+        console.log('WebSocket이 연결되었습니다.');
+        stompClient.subscribe('/topic/board/' + boardId, onMessageReceived);
+    }
+    function onError(error) {
+        console.error('WebSocket 연결에 실패했습니다.');
+    }
+    function onMessageReceived(payload) {
+        const message = JSON.parse(payload.body);
+        const data = message.payload;
+        switch (message.type) {
+            case 'CARD_CREATED':
+            case 'CARD_MOVED':
+            case 'CARD_DELETED':
+            case 'CARD_UPDATED':
+                window.location.reload();
+                break;
+            case 'CARD_EDITING_STARTED':
+                if (data.username !== currentUsername) {
+                    const cardElement = document.querySelector(`.card[data-card-id="${data.cardId}"]`);
+                    if (cardElement && !cardElement.querySelector('.editing-indicator')) {
+                        const indicator = document.createElement('span');
+                        indicator.className = 'badge bg-warning text-dark editing-indicator';
+                        indicator.innerText = `${data.username}님이 수정 중...`;
+                        cardElement.querySelector('.card-body').appendChild(indicator);
+                    }
+                }
+                break;
+            case 'CARD_EDITING_ENDED':
+                const cardElementToEnd = document.querySelector(`.card[data-card-id="${data.cardId}"]`);
+                if (cardElementToEnd) {
+                    const indicator = cardElementToEnd.querySelector('.editing-indicator');
+                    if (indicator) indicator.remove();
+                }
+                break;
+            case 'INVITE_STARTED':
+                if (data.username !== currentUsername) {
+                    inviteTypingIndicator.innerText = `${data.username}님이 초대 멤버를 입력 중...`;
+                }
+                break;
+            case 'INVITE_ENDED':
+                 inviteTypingIndicator.innerText = '';
+                 break;
+        }
+    }
+
+    // --- 4. 페이지가 로드되면 WebSocket 연결 시작 ---
     connect();
+
+    /*]]>*/
 </script>
 
 <script th:if="${msg}" th:inline="javascript">

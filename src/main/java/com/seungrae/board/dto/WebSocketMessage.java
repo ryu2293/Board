@@ -10,6 +10,12 @@ public record WebSocketMessage(
         CARD_CREATED,
         CARD_UPDATED,
         CARD_DELETED,
-        CARD_MOVED
+        CARD_MOVED,
+
+        CARD_EDITING_STARTED,
+        CARD_EDITING_ENDED,
+
+        INVITE_STARTED,
+        INVITE_ENDED
     }
 }
